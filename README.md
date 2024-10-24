@@ -20,9 +20,7 @@
 在强化学习中，目标是训练一个策略 $\pi_\theta(a|s)$，其中 $\theta$ 是策略网络的参数，使得期望的累积回报最大化。可以用数学表达如下：
 
 $$
-
 J(\theta) = \mathbb{E}_{\tau \sim p_\theta} \left[ R(\tau) \right]
-
 $$
 
 其中：
@@ -34,15 +32,11 @@ $$
 为了最大化回报，可以通过梯度上升的方法对神经网络参数进行优化。梯度上升的更新规则为：
 
 $$
-
 \nabla_\theta J(\theta) = \mathbb{E}_{\tau \sim p_\theta} \left[ \nabla_\theta \log p_\theta(\tau) R(\tau) \right]
-
 $$
 
 通过进一步数学推导，可以得到更易计算的形式：
 
 $$
-
 \nabla_\theta J(\theta) \approx \frac{1}{N} \sum_{i=1}^{N} \nabla_\theta \log p_\theta(\tau_i) R(\tau_i)
-
 $$
