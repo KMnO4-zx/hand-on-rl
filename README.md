@@ -40,3 +40,5 @@ $$
 $$
 \nabla_\theta J(\theta) \approx \frac{1}{N} \sum_{i=1}^{N} \nabla_\theta \log p_\theta(\tau_i) R(\tau_i)
 $$
+
+## PPO
