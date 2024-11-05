@@ -17,28 +17,101 @@
 
 ## 强化学习的目标
 
-在强化学习中，目标是训练一个策略 $\pi_\theta(a|s)$，其中 $\theta$ 是策略网络的参数，使得期望的累积回报最大化。可以用数学表达如下：
-
+在强化学习中，目标是训练一个神经网络 $Policy$ $\pi$ ，在所有状态 $s$ 下，给出相应的 $Action$ ，得到的 $Return$ 的期望值最大。即：
 $$
-J(\theta) = \mathbb{E}_{\tau \sim p_\theta} \left[ R(\tau) \right]
+E(R(\tau))_{\tau \sim P_{\theta}(\tau)} = \sum_{\tau} R(\tau) P_{\theta}(\tau)
 $$
 
 其中：
+1. $E(R(\tau))_{\tau \sim P_{\theta}(\tau)}$：表示在策略 $P_{\theta}(\tau)$ 下轨迹 $\tau$ 的回报 $R(\tau)$ 的期望值。
+2. $R(\tau)$：轨迹 $\tau$ 的回报，即从起始状态到终止状态获得的所有奖励的总和。
+3. $\tau$：表示一条轨迹，即智能体在环境中的状态和动作序列。
+4. $P_{\theta}(\tau)$：在参数 $\theta$ 下生成轨迹 $\tau$ 的概率，通常由策略或策略网络确定。
+5. $\theta$：策略的参数，控制着策略 $P_{\theta}$ 的行为。
 
-- $\tau = (s_0, a_0, s_1, a_1, \dots, s_T)$ 表示轨迹（trajectory）。
-- $R(\tau)$ 是轨迹 $\tau$ 中的累积回报，即从初始状态到终止状态所有奖励的累加。
-- $p_\theta$ 表示在策略 $\pi_\theta$ 下采样轨迹 $\tau$ 的概率分布。
+所以，我们的目标是找到一个策略 $\pi$，使得 $E(R(\tau))_{\tau \sim P_{\theta}(\tau)}$ 最大。那怎么找到这个策略呢？我们使用梯度上升的办法，即不断地更新策略参数 $\theta$，使得 $E(R(\tau))_{\tau \sim P_{\theta}(\tau)}$ 不断增大。
 
-为了最大化回报，可以通过梯度上升的方法对神经网络参数进行优化。梯度上升的更新规则为：
-
-$$
-\nabla_\theta J(\theta) = \mathbb{E}_{\tau \sim p_\theta} \left[ \nabla_\theta \log p_\theta(\tau) R(\tau) \right]
-$$
-
-通过进一步数学推导，可以得到更易计算的形式：
+首先，我们来计算梯度：
 
 $$
-\nabla_\theta J(\theta) \approx \frac{1}{N} \sum_{i=1}^{N} \nabla_\theta \log p_\theta(\tau_i) R(\tau_i)
+\begin{align*}
+\nabla E(R(\tau))_{\tau \sim P_{\theta}(\tau)} &= \nabla \sum_{\tau} R(\tau) P_{\theta}(\tau) \\
+&= \sum_{\tau} R(\tau) \nabla P_{\theta}(\tau) \\
+&= \sum_{\tau} R(\tau) \nabla P_{\theta}(\tau) \frac{P_{\theta}(\tau)}{P_{\theta}(\tau)} \\
+&= \sum_{\tau} P_{\theta}(\tau) R(\tau) \frac{\nabla P_{\theta}(\tau)}{P_{\theta}(\tau)} \\
+&= \sum_{\tau} P_{\theta}(\tau) R(\tau) \nabla \log P_{\theta}(\tau) \\
+&\approx \frac{1}{N} \sum_{n=1}^{N} R(\tau^n) \nabla \log P_{\theta}(\tau^n)
+\end{align*}
 $$
 
-## PPO
+接下来，我们来看一下 Trajectory 的概率 $P_{\theta}(\tau)$ 是怎么计算的：
+
+$$
+\begin{align*}
+\frac{1}{N} \sum_{n=1}^{N} R(\tau^n) \nabla \log P_{\theta}(\tau^n) &= \frac{1}{N} \sum_{n=1}^{N} R(\tau^n) \nabla \log \prod_{t=1}^{T_n} P_{\theta}(a_n^t \mid s_n^t) \\
+&= \frac{1}{N} \sum_{n=1}^{N} R(\tau^n) \sum_{t=1}^{T_n} \nabla \log P_{\theta}(a_n^t \mid s_n^t) \\
+&= \frac{1}{N} \sum_{n=1}^{N} \sum_{t=1}^{T_n} R(\tau^n) \nabla \log P_{\theta}(a_n^t \mid s_n^t) \\
+&= \frac{1}{N} \sum_{n=1}^{N} \sum_{t=1}^{T_n} R(\tau^n) \log P_{\theta}(a_n^t \mid s_n^t)
+\end{align*}
+$$
+
+1. $\frac{1}{N} \sum_{n=1}^{N} R(\tau^n) \nabla \log P_{\theta}(\tau^n)$：对轨迹$\tau^n$ 的概率对数进行求导，表示利用策略梯度对期望回报进行优化。
+
+2. $\prod_{t=1}^{T_n} P_{\theta}(a_n^t | s_n^t)$：表示轨迹$\tau^n$ 中所有步骤$t$上采取的动作$a_n^t$ 在状态$s_n^t$ 下的联合概率。
+
+3. $\nabla \log \prod_{t=1}^{T_n} P_{\theta}(a_n^t | s_n^t)$：利用对数的可加性，将联合概率的对数梯度分解为各步的对数梯度之和。
+
+4. $\sum_{t=1}^{T_n} \nabla \log P_{\theta}(a_n^t | s_n^t)$：对每一步动作的概率对数取梯度，分解为每一步的累加。
+
+5. $\sum_{t=1}^{T_n} R(\tau^n) \nabla \log P_{\theta}(a_n^t | s_n^t)$：利用累积回报$R(\tau^n)$ 加权每一步的对数梯度，体现策略梯度方法中的优势估计。
+
+6. $\sum_{t=1}^{T_n} R(\tau^n) \log P_{\theta}(a_n^t | s_n^t)$：省略梯度符号后的形式，通常用于描述带有加权对数概率的情况。
+
+那我们应该如何训练一个 Policy 网络呢？受局限我们可以定义loss函数为：
+
+$$
+loss = - \frac{1}{N} \sum_{n=1}^{N} \sum_{t=1}^{T_n} R(\tau^n) \log P_{\theta}(a_n^t \mid s_n^t)
+$$
+
+在我们的目标函数前加上负号，就可以转化为一个最小化问题。我们可以使用梯度下降的方法来求解这个问题。
+但是，我们在实际训练中，通常会使用更加稳定的方法，即使用基于策略梯度的方法，例如 PPO、TRPO 等。
+
+$$
+\frac{1}{N} \sum_{n=1}^{N} \sum_{t=1}^{T_n} R(\tau^n) \log P_{\theta}(a_n^t \mid s_n^t)
+$$
+
+如以上公式所示，如果当前的 Trajectory 的回报 $R(\tau)$ 较大，那么我们就会增大这个 Trajectory 下所有 $action$ 的概率，反之亦然。
+这样，我们就可以不断地调整策略，使得回报最大化。
+但这明显是存在改进空间的，因为我们只是简单地使用回报来调整策略，而没有考虑到回报的分布，这样就会导致回报的方差较大，训练不稳定。
+
+针对这个问题，我们修改一下公式，首先对 $Reward$ 求和：
+
+$$
+R(\tau^n) \rightarrow \sum_{t' = t}^{T_n} \gamma^{t' - t} r_{t'}^n = R_t^n
+$$
+
+其中：
+1. $R(\tau^n)$：轨迹 $\tau^n$ 的累积回报，这里使用了未来回报的折扣求和来表示。
+
+2. $R_t^n$：从时间步$t$开始的未来折扣回报，表示轨迹$\tau^n$在时间步$t$时的累计回报。
+
+3. $\sum_{t' = t}^{T_n}$：对时间步$t$到$T_n$（轨迹结束时刻）之间的所有奖励进行求和。
+
+4. $\gamma^{t' - t}$：折扣因子$\gamma$的幂次，控制未来奖励的权重，$\gamma \in [0,1]$。当$t'$ 越远离当前时刻 $t$，其贡献越小。
+
+5. $r_{t'}^n$：在时间步 $t'$发生的即时奖励。
+
+总的来说，修改后的公式是对未来回报的折扣求和，这样当前动作的概率就不再只取决于当前的回报，而是取决于未来的回报，这样就可以减小回报的方差，使得训练更加稳定。
+
+还有一种情况会影响我们算法的稳定性，那就是在好的局势下和坏的局势下。比如在好的局势下，不论你做什么动作，你都会得到正的回报，这样算法就会增加所有动作的概率。
+得到reward大的动作的概率大一些，但是这样会让训练很慢，也会不稳定。最好是能够让相对好的动作的概率增加，相对坏的动作的概率减小。
+
+为了解决这个问题，我们可以对所有动作的reward都减去一个baseline，这样就可以让相对好的动作的reward增加，相对坏的动作的reward减小，也能反映这个动作相对其他动作的价值。
+
+所以我们的目标函数就变为：
+
+$$
+\frac{1}{N} \sum_{n=1}^{N} \sum_{t=1}^{T_n} (R_t^n - B(s_n^t)) \log P_{\theta}(a_n^t \mid s_n^t)
+$$
+
+其中，$B(s_n^t)$ 也需要用神经网络来拟合，这就是我们的 Actor-Critic 网络。Actor网络负责输出动作的概率，Critic网络负责评估Actor网络输出的动作好坏。
