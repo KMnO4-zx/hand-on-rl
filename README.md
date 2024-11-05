@@ -291,3 +291,9 @@ $$
 整个PPO-clip损失函数的作用是通过裁剪操作约束策略的变化幅度，使策略更新不会过于激进。这种方式相比于传统策略梯度方法更为稳定，并且在优化过程中能够有效平衡探索和利用。PPO2 的这种裁剪机制是其成功的关键，广泛用于实际的强化学习应用中。
 
 好了，如果你坚持看到了这里，那想必你已经差不多掌握了强化学习的基本思想和PPO算法的基本思想。接下来你可以将PPO应用到大模型的训练中啦！
+
+**参考文献**
+
+1. [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)
+2. [动手学强化学习](https://hrl.boyuai.com/chapter/1/%E5%88%9D%E6%8E%A2%E5%BC%BA%E5%8C%96%E5%AD%A6%E4%B9%A0/)
+3. [零基础学习强化学习算法：ppo](https://www.bilibili.com/video/BV1iz421h7gb/?spm_id_from=333.1007.top_right_bar_window_history.content.click&vd_source=c102de6ffc75a54d6576f9fdc931e08a)
